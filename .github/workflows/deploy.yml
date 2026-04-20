@@ -1,86 +1,26 @@
-name: Build & Deploy RenPy Web to GitHub Pages
+name: Deploy RenPy Web
 
 on:
   push:
     branches: [main]
-
-# Required for the modern actions/deploy-pages flow
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one deployment at a time; cancel an in-progress run
-# when a new push arrives so we never publish a stale build.
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
+  contents: write
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # ── 1. Check out the game source ────────────────────────────────────────
-      - name: Checkout game
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ── 2. Restore the cached SDK (keyed to version) ────────────────────────
-      - name: Cache Ren'Py SDK
-        id: cache-sdk
-        uses: actions/cache@v4
+      - name: Find latest web build
+        id: find_build
+        run: |
+          cd web-build
+          latest=$(ls -td *-web | head -n 1)
+          echo "dir=web-build/$latest" >> $GITHUB_OUTPUT
+      - name: Deploy to Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: renpy-sdk
-          key: renpy-sdk-8.5.2-web-linux-x86_64
-
-      # ── 3. Download & unpack the SDK only on a cache miss ───────────────────
-      - name: Download Ren'Py SDK
-        if: steps.cache-sdk.outputs.cache-hit != 'true'
-        run: |
-          curl -fL "https://www.renpy.org/dl/8.5.2/renpy-8.5.2-sdk.tar.bz2" \
-               -o renpy-sdk.tar.bz2
-          mkdir renpy-sdk
-          tar -xjf renpy-sdk.tar.bz2 --strip-components=1 -C renpy-sdk
-          rm renpy-sdk.tar.bz2
-
-      - name: Download Ren'Py Web presupport
-        if: steps.cache-sdk.outputs.cache-hit != 'true'
-        run: |
-          curl -fL "https://www.renpy.org/dl/8.5.2/renpy-8.5.2-web.zip" \
-               -o renpy-web.zip
-          unzip -q renpy-web.zip -d renpy-sdk/web
-          rm renpy-web.zip
-
-      # ── 4. Install Xvfb (SDL/Ren'Py needs a display even in headless mode) ─
-      - name: Install Xvfb
-        run: sudo apt-get install -y xvfb
-
-      # ── 5. Build the web distribution via the Ren'Py CLI ───────────────────
-      #    web_build is registered in launcher/game/web.rpy and runs gui=False.
-      #    Pass the launcher as an ABSOLUTE path: bootstrap.py calls os.path.abspath()
-      #    on the first positional arg. The compiled binary may not inherit the shell
-      #    CWD, so a relative "launcher" resolves to GITHUB_WORKSPACE/launcher (wrong).
-      - name: Build web distribution
-        run: |
-          Xvfb :99 -screen 0 1280x720x24 &
-          sleep 1
-          export DISPLAY=:99
-          SDK_DIR="$GITHUB_WORKSPACE/renpy-sdk"
-          chmod +x "$SDK_DIR/renpy.sh"
-          "$SDK_DIR/renpy.sh" "$SDK_DIR/launcher" web_build \
-            "$GITHUB_WORKSPACE" \
-            --destination "$GITHUB_WORKSPACE/web-dist"
-
-      # ── 6. Upload built output as a Pages artifact ──────────────────────────
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: web-dist
-
-      # ── 7. Deploy to GitHub Pages ───────────────────────────────────────────
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ steps.find_build.outputs.dir }}
