@@ -1,0 +1,26 @@
+name: Deploy RenPy Web
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Find latest web build
+        id: find_build
+        run: |
+          cd web-build
+          latest=$(ls -td *-web | head -n 1)
+          echo "dir=web-build/$latest" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ steps.find_build.outputs.dir }}
