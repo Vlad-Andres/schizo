@@ -34,7 +34,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: renpy-sdk
-          key: renpy-sdk-8.5.2-linux-x86_64
+          key: renpy-sdk-8.5.2-web-linux-x86_64
 
       # ── 3. Download & unpack the SDK only on a cache miss ───────────────────
       - name: Download Ren'Py SDK
@@ -45,6 +45,14 @@ jobs:
           mkdir renpy-sdk
           tar -xjf renpy-sdk.tar.bz2 --strip-components=1 -C renpy-sdk
           rm renpy-sdk.tar.bz2
+
+      - name: Download Ren'Py Web presupport
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          curl -fL "https://www.renpy.org/dl/8.5.2/renpy-8.5.2-web.zip" \
+               -o renpy-web.zip
+          unzip -q renpy-web.zip -d renpy-sdk/web
+          rm renpy-web.zip
 
       # ── 4. Install Xvfb (SDL/Ren'Py needs a display even in headless mode) ─
       - name: Install Xvfb
