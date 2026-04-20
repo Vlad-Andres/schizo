@@ -52,14 +52,16 @@ jobs:
 
       # ── 5. Build the web distribution via the Ren'Py CLI ───────────────────
       #    web_build is registered in launcher/game/web.rpy and runs gui=False.
-      #    It outputs to --destination, which we set to web-dist/ in the runner.
+      #    IMPORTANT: must cd into the SDK dir so that the positional arg
+      #    'launcher' resolves to renpy-sdk/launcher (not GITHUB_WORKSPACE/launcher).
       - name: Build web distribution
         run: |
           Xvfb :99 -screen 0 1280x720x24 &
           sleep 1
           export DISPLAY=:99
           chmod +x renpy-sdk/renpy.sh
-          renpy-sdk/renpy.sh launcher web_build \
+          cd renpy-sdk
+          ./renpy.sh launcher web_build \
             "$GITHUB_WORKSPACE" \
             --destination "$GITHUB_WORKSPACE/web-dist"
 
